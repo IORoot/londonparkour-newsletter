@@ -64,26 +64,37 @@ It runs three jobs: **`render`** (build HTML, upload a [GitHub Pages artifact](h
 
 The **`render`** job builds `pages-out/index.html` (from `dist/rendered.html`) and uploads it with **`actions/upload-pages-artifact`**. The separate **`deploy-github-pages`** job runs **`actions/deploy-pages`** to publish it—**no extra branch** (nothing is pushed to `gh-pages`).
 
-**One-time setup (required or deploy returns 404)**
+**One-time setup (required — otherwise `deploy-github-pages` returns 404)**
+
+The error *“Failed to create deployment (status: 404)… Ensure GitHub Pages has been enabled”* means GitHub has **not** accepted an [Actions-based Pages deployment](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow) for this repo yet. Fix it in the UI (no code change fixes this):
 
 1. Open **[Pages settings](https://github.com/IORoot/londonparkour-newsletter/settings/pages)** (**Settings** → **Pages**).
-2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
+2. Under **Build and deployment**, open the **Source** dropdown.
+3. Select **GitHub Actions** (not “Deploy from a branch”). Save if GitHub shows a save control.
+4. Wait a few seconds, then **re-run** the workflow (or push a new run).
 
-After a successful run, the live URL is usually:
+After that works, the live URL is usually:
 
 `https://ioroot.github.io/londonparkour-newsletter/`
 
-The **`deploy-github-pages`** job exposes the exact **page URL** in the job output when deployment succeeds. See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#types-of-github-pages-sites) for hostname rules.
+The **`deploy-github-pages`** job shows the **page URL** in the job summary when deployment succeeds. See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#types-of-github-pages-sites) for hostname rules.
 
-**If `deploy-github-pages` fails with 404**
+**While you are fixing Pages**
 
-The Pages API only accepts deployments when **Source** is **GitHub Actions** as above. Organization policy or private-repo limits can also block deployment; see GitHub’s Pages docs.
+The **Deploy to GitHub Pages** step uses **`continue-on-error: true`**, so a 404 does **not** fail the whole workflow: **`upload-mailchimp`** still runs. The **`Pages deploy failed — how to fix 404`** step prints **Annotations** with the settings link.
+
+**Manual run only:** you can turn off the Pages job with the **Publish to GitHub Pages** checkbox (uncheck) if you only want Mailchimp that run.
+
+**If it still 404s after selecting GitHub Actions**
+
+- **Organization:** an owner may need to allow **Pages** and **GitHub Actions** for the org or this repo.
+- **Private repo:** your plan may need to allow [Pages for private repositories](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits).
 
 ### Manual run (`workflow_dispatch`)
 
 1. Commit your rules file (default [`input.json`](input.json)) on the branch you want.
 2. **Actions** → **Render newsletter and upload to Mailchimp** → **Run workflow**.
-3. Choose the **branch**, enter **Mailchimp template name**, and optionally change **rules file** path (repo-relative, default `input.json`).
+3. Choose the **branch**, enter **Mailchimp template name**, and optionally change **rules file** path (repo-relative, default `input.json`). Leave **Publish to GitHub Pages** checked unless you want to skip the Pages job for that run.
 
 ### API run (`repository_dispatch`)
 
