@@ -1,0 +1,81 @@
+name: Render newsletter and upload to Mailchimp
+
+on:
+  repository_dispatch:
+    types: [render-newsletter]
+  workflow_dispatch:
+    inputs:
+      template_name:
+        description: Mailchimp template name
+        required: true
+        type: string
+      rules_file:
+        description: Path to rules JSON (object or array of objects)
+        required: false
+        default: input.json
+        type: string
+
+jobs:
+  render-and-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Save client payload (repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: printf '%s' "$PAYLOAD" > client_payload.json
+
+      - name: Build client payload (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RULES_FILE: ${{ github.event.inputs.rules_file }}
+        run: |
+          test -f "$RULES_FILE" || { echo "Rules file not found: $RULES_FILE" >&2; exit 1; }
+          jq -n \
+            --arg name "${{ github.event.inputs.template_name }}" \
+            --slurpfile rules "$RULES_FILE" \
+            '{templateName: $name, rules: $rules[0]}' > client_payload.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Render HTML and Mailchimp JSON
+        run: npm run render -- --config client_payload.json --template-html template.html --out-dir dist
+
+      - name: Extract Mailchimp datacenter
+        id: mailchimp_dc
+        env:
+          MAILCHIMP_API_KEY: ${{ secrets.MAILCHIMP_API_KEY }}
+        run: |
+          if [ -z "$MAILCHIMP_API_KEY" ]; then
+            echo "MAILCHIMP_API_KEY secret is not set" >&2
+            exit 1
+          fi
+          dc="${MAILCHIMP_API_KEY##*-}"
+          echo "dc=$dc" >> "$GITHUB_OUTPUT"
+
+      - name: Upload template to Mailchimp
+        env:
+          MAILCHIMP_API_KEY: ${{ secrets.MAILCHIMP_API_KEY }}
+          MAILCHIMP_DC: ${{ steps.mailchimp_dc.outputs.dc }}
+        run: |
+          curl -sS -f \
+            -X POST "https://${MAILCHIMP_DC}.api.mailchimp.com/3.0/templates" \
+            -u "anystring:${MAILCHIMP_API_KEY}" \
+            -H "Content-Type: application/json" \
+            --data-binary @dist/upload.json \
+            -o mailchimp-response.json
+          echo "Mailchimp response:"
+          cat mailchimp-response.json

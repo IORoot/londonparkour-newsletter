@@ -1,0 +1,11 @@
+{
+  "name": "londonparkour-newsletter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node scripts/render.mjs"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  }
+}

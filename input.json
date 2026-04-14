@@ -1,0 +1,29 @@
+[{
+    ".section1"  :true,
+    ".title1"    :"Intermediate Class",
+    ".content1"  :"Content",
+    ".link1:href":"https://londonparkour.com",
+    ".link1"     :"Class Details",
+    ".image1:src":"https://londonparkour.com/wp-content/uploads/1280x1280_white/Kevin_Speed_Vault.png",
+
+    ".section2"  :false,
+    ".title2"    :"Intermediate Class",
+    ".content2"  :"Content",
+    ".link2:href":"https://londonparkour.com",
+    ".link2"     :"Class Details",
+    ".image2:src":"https://londonparkour.com/wp-content/uploads/1280x1280_white/Kevin_Speed_Vault.png",
+
+    ".section3"  :false,
+    ".title3"    :"Intermediate Class",
+    ".content3"  :"Content",
+    ".link3:href":"https://londonparkour.com",
+    ".link3"     :"Class Details",
+    ".image3:src":"https://londonparkour.com/wp-content/uploads/1280x1280_white/Kevin_Speed_Vault.png",
+
+    ".section4"  :false,
+    ".title4"    :"Intermediate Class",
+    ".content4"  :"Content",
+    ".link4:href":"https://londonparkour.com",
+    ".link4"     :"Class Details",
+    ".image4:src":"https://londonparkour.com/wp-content/uploads/1280x1280_white/Kevin_Speed_Vault.png"
+}]
