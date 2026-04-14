@@ -58,10 +58,16 @@ It runs three jobs: **`render`** (build HTML, publish a Pages artifact, stash `d
 
 Each run publishes the rendered file as the site root **`index.html`** so you can open the newsletter in a browser.
 
-**One-time setup**
+**One-time setup (required or `deploy-github-pages` returns 404)**
 
-1. In the repository, go to **Settings** → **Pages**.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
+1. Open **[Pages settings for this repo](https://github.com/IORoot/londonparkour-newsletter/settings/pages)** (**Settings** → **Pages**).
+2. Under **Build and deployment**, open the **Source** control. It must be **GitHub Actions**, not **Deploy from a branch**. If you still see only a branch (for example `main` / `/ (root)`), change the source to **GitHub Actions** and save. Until this is set, the Pages API returns **404 Not Found** when `actions/deploy-pages` tries to create a deployment (the log line *“Ensure GitHub Pages has been enabled”* refers to this).
+3. Re-run the workflow after saving (the first successful deploy may take a minute).
+
+**If it still fails**
+
+- **Organization repo:** an org owner may need to allow GitHub Pages in **Organization settings** → **Pages**, and your role may need permission to change repo Pages settings.
+- **Private repository:** publishing a private repo to Pages can require a [paid plan or GitHub Enterprise](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) depending on your setup; otherwise enable Pages on a public fork or make the repo public if that is acceptable.
 
 After the next successful workflow run, the site is available at your GitHub Pages URL for this repo, typically:
 
