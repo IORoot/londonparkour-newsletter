@@ -35,6 +35,12 @@ Examples:
 
 **Duplicate tags (e.g. Outlook `<!--[if mso]>`):** Markup inside IE conditional comments is not in the DOM tree the HTML parser uses. For a **single-class** selector like `.image4`, `src` / `alt` on `img` and `href` on `a` are also patched in the raw HTML so every matching opening tag is updated (including MSO-only copies).
 
+**Troubleshooting: section markup still in the HTML**
+
+1. **CSS only:** The text `.section2` (and similar) often still appears inside **`<style>`** blocks. Those are stylesheet selectors, not the Mailchimp section `<tbody class="mceWrapper section2">`. The renderer does not strip unused CSS rules.
+
+2. **Real `<tbody class="... section2">` still there:** Then that run did **not** apply a removal rule for `.section2`. With [`input.json`](input.json) as committed (boolean `false` for `.section2` / `.section3` / `.section4`), a local render removes those nodes. If Mailchimp still gets the full sections, check the **actual** `client_payload.rules` from Make (e.g. all three were `"true"` in an earlier bundle), typos in keys (`section2` vs `.section2`), or an empty / wrong `rules` array. The script now accepts **`rules` as a JSON string** (parse then merge) and unwraps a **double-nested** array shape `[[{...}]]` when a tool wraps the batch twice.
+
 ## Local render
 
 ```bash
@@ -52,30 +58,29 @@ Outputs:
 
 Workflow: [`.github/workflows/render-and-upload.yml`](.github/workflows/render-and-upload.yml).
 
-It runs three jobs: **`render`** (build HTML, publish a Pages artifact, stash `dist/` for Mailchimp), **`deploy-github-pages`** (deploy that artifact to the site), and **`upload-mailchimp`** (POST to Mailchimp). The Mailchimp job does not block Pages, so you still get a browser preview if Mailchimp fails.
+It runs two jobs: **`render`** (build HTML, push a browser preview to the **`gh-pages`** branch, upload `dist/` as an artifact), and **`upload-mailchimp`** (download that artifact and POST to Mailchimp). Mailchimp runs separately, so a Mailchimp failure does not undo the preview push.
 
 ### GitHub Pages preview
 
-Each run publishes the rendered file as the site root **`index.html`** so you can open the newsletter in a browser.
+Each run pushes **`index.html`** (a copy of `dist/rendered.html`) to the **`gh-pages`** branch using [JamesIves/github-pages-deploy-action](https://github.com/JamesIves/github-pages-deploy-action). That avoids the GitHub **Actions → Pages** deployment API, which often returns **404** unless the repo is configured for “GitHub Actions” as the Pages source.
 
-**One-time setup (required or `deploy-github-pages` returns 404)**
+**One-time setup**
 
-1. Open **[Pages settings for this repo](https://github.com/IORoot/londonparkour-newsletter/settings/pages)** (**Settings** → **Pages**).
-2. Under **Build and deployment**, open the **Source** control. It must be **GitHub Actions**, not **Deploy from a branch**. If you still see only a branch (for example `main` / `/ (root)`), change the source to **GitHub Actions** and save. Until this is set, the Pages API returns **404 Not Found** when `actions/deploy-pages` tries to create a deployment (the log line *“Ensure GitHub Pages has been enabled”* refers to this).
-3. Re-run the workflow after saving (the first successful deploy may take a minute).
+1. Run the workflow once so GitHub creates the **`gh-pages`** branch (the `render` job needs **`contents: write`** permission, which this workflow sets).
+2. Open **[Pages settings](https://github.com/IORoot/londonparkour-newsletter/settings/pages)** (**Settings** → **Pages**).
+3. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
+4. Choose **Branch:** `gh-pages`, folder **`/ (root)`**, then **Save**.
 
-**If it still fails**
-
-- **Organization repo:** an org owner may need to allow GitHub Pages in **Organization settings** → **Pages**, and your role may need permission to change repo Pages settings.
-- **Private repository:** publishing a private repo to Pages can require a [paid plan or GitHub Enterprise](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) depending on your setup; otherwise enable Pages on a public fork or make the repo public if that is acceptable.
-
-After the next successful workflow run, the site is available at your GitHub Pages URL for this repo, typically:
+After that, the preview URL is usually:
 
 `https://ioroot.github.io/londonparkour-newsletter/`
 
-Exact hostname follows your account or organization; see [GitHub Pages documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#types-of-github-pages-sites).
+See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#types-of-github-pages-sites) for how the hostname is chosen for users vs organizations.
 
-On the workflow run page, open the **`deploy-github-pages`** job: GitHub shows the **deployed URL** when deployment finishes. If your org uses deployment protection, approve the **`github-pages`** environment the first time.
+**If the push step fails**
+
+- Confirm **Settings** → **Actions** → **General** → **Workflow permissions** is set to **Read and write permissions** (needed for `GITHUB_TOKEN` to push `gh-pages`).
+- On **organization** repositories, an admin may need to allow GitHub Actions to create branches or to use workflows with `contents: write`.
 
 ### Manual run (`workflow_dispatch`)
 

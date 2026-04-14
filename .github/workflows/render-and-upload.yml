@@ -16,16 +16,14 @@ on:
         type: string
 
 concurrency:
-  group: github-pages-deploy
+  group: newsletter-render
   cancel-in-progress: false
 
 jobs:
   render:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
-      id-token: write
+      contents: write
 
     steps:
       - name: Checkout
@@ -41,7 +39,11 @@ jobs:
         if: github.event_name == 'repository_dispatch'
         env:
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
-        run: printf '%s' "$PAYLOAD" > client_payload.json
+        run: |
+          printf '%s' "$PAYLOAD" > client_payload.json
+          echo "========== repository_dispatch client_payload =========="
+          echo "$PAYLOAD" | jq . 2>/dev/null || echo "$PAYLOAD"
+          echo "========================================================"
 
       - name: Build client payload (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -53,6 +55,9 @@ jobs:
             --arg name "${{ github.event.inputs.template_name }}" \
             --slurpfile rules "$RULES_FILE" \
             '{templateName: $name, rules: $rules[0]}' > client_payload.json
+          echo "========== workflow_dispatch client_payload (built) =========="
+          jq . client_payload.json
+          echo "==============================================================="
 
       - name: Install dependencies
         run: npm ci
@@ -65,33 +70,18 @@ jobs:
           mkdir -p pages-out
           cp dist/rendered.html pages-out/index.html
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+      - name: Publish preview to gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: pages-out
+          folder: pages-out
+          branch: gh-pages
+          clean: true
 
       - name: Upload dist for Mailchimp job
         uses: actions/upload-artifact@v4
         with:
           name: newsletter-dist
           path: dist/
-
-  # Requires repo Settings → Pages → Source: GitHub Actions, or create deployment returns 404.
-  deploy-github-pages:
-    needs: render
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          artifact_name: github-pages
 
   upload-mailchimp:
     needs: render

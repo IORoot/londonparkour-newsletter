@@ -66,17 +66,28 @@ function parseRuleKey(key) {
 }
 
 function mergeRules(rules) {
-  if (Array.isArray(rules)) {
-    if (rules.length === 0) return {};
-    return Object.assign({}, ...rules.map((r) => {
-      if (r === null || typeof r !== "object" || Array.isArray(r)) {
+  let r = rules;
+  if (typeof r === "string") {
+    r = JSON.parse(r);
+  }
+  // Unwrap [[{...}]] from tools that double-encode arrays (still one batch).
+  while (Array.isArray(r) && r.length === 1 && Array.isArray(r[0])) {
+    r = r[0];
+  }
+  if (Array.isArray(r)) {
+    if (r.length === 0) {
+      console.warn("rules is an empty array; no selector rules will be applied");
+      return {};
+    }
+    return Object.assign({}, ...r.map((entry) => {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
         throw new Error("rules array entries must be plain objects");
       }
-      return r;
+      return entry;
     }));
   }
-  if (rules !== null && typeof rules === "object" && !Array.isArray(rules)) {
-    return { ...rules };
+  if (r !== null && typeof r === "object" && !Array.isArray(r)) {
+    return { ...r };
   }
   throw new Error("rules must be a non-null object or an array of objects");
 }
