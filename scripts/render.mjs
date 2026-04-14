@@ -3,6 +3,59 @@ import fs from "fs";
 import path from "path";
 
 const ATTR_SUFFIX = /^[a-zA-Z][\w-]*$/;
+/** Selectors like `.image4` only (for string-level patches inside IE conditional comments). */
+const SINGLE_CLASS_SELECTOR = /^\.[\w-]+$/;
+
+function escapeAttrDoubleQuoted(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;");
+}
+
+function tagForAttrPatch(attr) {
+  if (attr === "src" || attr === "alt") return "img";
+  if (attr === "href") return "a";
+  return null;
+}
+
+/**
+ * Outlook / MSO blocks live inside `<!--[if mso]>...<![endif]-->`; the HTML parser treats that as
+ * a comment, so Cheerio never sees those nodes. Patch matching opening tags in the raw string.
+ */
+function patchAttrByClassInRawHtml(html, selector, attr, strVal) {
+  if (!SINGLE_CLASS_SELECTOR.test(selector)) return html;
+  const tag = tagForAttrPatch(attr);
+  if (!tag) return html;
+  const className = selector.slice(1);
+  const classTokenRe = new RegExp(`(?:^|\\s)${className}(?:\\s|$)`);
+  const quoted = escapeAttrDoubleQuoted(strVal);
+  const tagOpenRe = new RegExp(`<${tag}\\b([^>]*)>`, "gi");
+  return html.replace(tagOpenRe, (full, inner) => {
+    const cm = inner.match(/\bclass\s*=\s*"([^"]*)"|\bclass\s*=\s*'([^']*)'/i);
+    const cls = cm && (cm[1] ?? cm[2]);
+    if (!cls || !classTokenRe.test(cls)) return full;
+    const dq = new RegExp(`\\s${attr}\\s*=\\s*"[^"]*"`, "i");
+    const sq = new RegExp(`\\s${attr}\\s*=\\s*'[^']*'`, "i");
+    let next = inner;
+    if (dq.test(next)) next = next.replace(dq, ` ${attr}="${quoted}"`);
+    else if (sq.test(next)) next = next.replace(sq, ` ${attr}="${quoted}"`);
+    else next = `${next} ${attr}="${quoted}"`;
+    return `<${tag}${next}>`;
+  });
+}
+
+/** Treat JSON/boolean and common string forms from tools like Make.com */
+function isTruthy(value) {
+  if (value === true) return true;
+  if (typeof value === "string" && value.trim().toLowerCase() === "true") return true;
+  return false;
+}
+
+function isFalsey(value) {
+  if (value === false) return true;
+  if (typeof value === "string" && value.trim().toLowerCase() === "false") return true;
+  return false;
+}
 
 function parseRuleKey(key) {
   const idx = key.lastIndexOf(":");
@@ -45,13 +98,13 @@ function applyRules(html, merged) {
   const entries = Object.entries(merged);
 
   for (const [key, value] of entries) {
-    if (value !== false) continue;
+    if (!isFalsey(value)) continue;
     const { selector } = parseRuleKey(key);
     $(selector).remove();
   }
 
   for (const [key, value] of entries) {
-    if (value === true || value === false) continue;
+    if (isTruthy(value) || isFalsey(value)) continue;
     const { selector, attr } = parseRuleKey(key);
     const els = $(selector);
     if (attr) {
@@ -64,7 +117,15 @@ function applyRules(html, merged) {
     }
   }
 
-  return $.html();
+  let out = $.html();
+  for (const [key, value] of entries) {
+    if (isTruthy(value) || isFalsey(value)) continue;
+    const { selector, attr } = parseRuleKey(key);
+    if (!attr) continue;
+    const strVal = value === null || value === undefined ? "" : String(value);
+    out = patchAttrByClassInRawHtml(out, selector, attr, strVal);
+  }
+  return out;
 }
 
 function parseArgs(argv) {
