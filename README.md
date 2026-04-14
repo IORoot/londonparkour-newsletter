@@ -52,6 +52,25 @@ Outputs:
 
 Workflow: [`.github/workflows/render-and-upload.yml`](.github/workflows/render-and-upload.yml).
 
+It runs three jobs: **`render`** (build HTML, publish a Pages artifact, stash `dist/` for Mailchimp), **`deploy-github-pages`** (deploy that artifact to the site), and **`upload-mailchimp`** (POST to Mailchimp). The Mailchimp job does not block Pages, so you still get a browser preview if Mailchimp fails.
+
+### GitHub Pages preview
+
+Each run publishes the rendered file as the site root **`index.html`** so you can open the newsletter in a browser.
+
+**One-time setup**
+
+1. In the repository, go to **Settings** → **Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
+
+After the next successful workflow run, the site is available at your GitHub Pages URL for this repo, typically:
+
+`https://ioroot.github.io/londonparkour-newsletter/`
+
+Exact hostname follows your account or organization; see [GitHub Pages documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#types-of-github-pages-sites).
+
+On the workflow run page, open the **`deploy-github-pages`** job: GitHub shows the **deployed URL** when deployment finishes. If your org uses deployment protection, approve the **`github-pages`** environment the first time.
+
 ### Manual run (`workflow_dispatch`)
 
 1. Commit your rules file (default [`input.json`](input.json)) on the branch you want.

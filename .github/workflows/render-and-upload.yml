@@ -15,11 +15,17 @@ on:
         default: input.json
         type: string
 
+concurrency:
+  group: github-pages-deploy
+  cancel-in-progress: false
+
 jobs:
-  render-and-upload:
+  render:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -53,6 +59,49 @@ jobs:
 
       - name: Render HTML and Mailchimp JSON
         run: npm run render -- --config client_payload.json --template-html template.html --out-dir dist
+
+      - name: Prepare GitHub Pages bundle
+        run: |
+          mkdir -p pages-out
+          cp dist/rendered.html pages-out/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: pages-out
+
+      - name: Upload dist for Mailchimp job
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsletter-dist
+          path: dist/
+
+  deploy-github-pages:
+    needs: render
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  upload-mailchimp:
+    needs: render
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download rendered dist
+        uses: actions/download-artifact@v4
+        with:
+          name: newsletter-dist
+          path: dist
 
       - name: Extract Mailchimp datacenter
         id: mailchimp_dc
