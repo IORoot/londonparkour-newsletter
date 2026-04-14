@@ -58,29 +58,26 @@ Outputs:
 
 Workflow: [`.github/workflows/render-and-upload.yml`](.github/workflows/render-and-upload.yml).
 
-It runs two jobs: **`render`** (build HTML, push a browser preview to the **`gh-pages`** branch, upload `dist/` as an artifact), and **`upload-mailchimp`** (download that artifact and POST to Mailchimp). Mailchimp runs separately, so a Mailchimp failure does not undo the preview push.
+It runs three jobs: **`render`** (build HTML, upload a [GitHub Pages artifact](https://github.com/actions/upload-pages-artifact), and upload `dist/` for Mailchimp), **`deploy-github-pages`** (publish that artifact to Pages), and **`upload-mailchimp`** (POST to Mailchimp). The Mailchimp job does not block Pages.
 
 ### GitHub Pages preview
 
-Each run pushes **`index.html`** (a copy of `dist/rendered.html`) to the **`gh-pages`** branch using [JamesIves/github-pages-deploy-action](https://github.com/JamesIves/github-pages-deploy-action). That avoids the GitHub **Actions → Pages** deployment API, which often returns **404** unless the repo is configured for “GitHub Actions” as the Pages source.
+The **`render`** job builds `pages-out/index.html` (from `dist/rendered.html`) and uploads it with **`actions/upload-pages-artifact`**. The separate **`deploy-github-pages`** job runs **`actions/deploy-pages`** to publish it—**no extra branch** (nothing is pushed to `gh-pages`).
 
-**One-time setup**
+**One-time setup (required or deploy returns 404)**
 
-1. Run the workflow once so GitHub creates the **`gh-pages`** branch (the `render` job needs **`contents: write`** permission, which this workflow sets).
-2. Open **[Pages settings](https://github.com/IORoot/londonparkour-newsletter/settings/pages)** (**Settings** → **Pages**).
-3. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-4. Choose **Branch:** `gh-pages`, folder **`/ (root)`**, then **Save**.
+1. Open **[Pages settings](https://github.com/IORoot/londonparkour-newsletter/settings/pages)** (**Settings** → **Pages**).
+2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
 
-After that, the preview URL is usually:
+After a successful run, the live URL is usually:
 
 `https://ioroot.github.io/londonparkour-newsletter/`
 
-See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#types-of-github-pages-sites) for how the hostname is chosen for users vs organizations.
+The **`deploy-github-pages`** job exposes the exact **page URL** in the job output when deployment succeeds. See [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#types-of-github-pages-sites) for hostname rules.
 
-**If the push step fails**
+**If `deploy-github-pages` fails with 404**
 
-- Confirm **Settings** → **Actions** → **General** → **Workflow permissions** is set to **Read and write permissions** (needed for `GITHUB_TOKEN` to push `gh-pages`).
-- On **organization** repositories, an admin may need to allow GitHub Actions to create branches or to use workflows with `contents: write`.
+The Pages API only accepts deployments when **Source** is **GitHub Actions** as above. Organization policy or private-repo limits can also block deployment; see GitHub’s Pages docs.
 
 ### Manual run (`workflow_dispatch`)
 

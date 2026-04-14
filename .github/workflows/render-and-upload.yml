@@ -23,7 +23,9 @@ jobs:
   render:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -70,18 +72,32 @@ jobs:
           mkdir -p pages-out
           cp dist/rendered.html pages-out/index.html
 
-      - name: Publish preview to gh-pages branch
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          folder: pages-out
-          branch: gh-pages
-          clean: true
+          path: pages-out
 
       - name: Upload dist for Mailchimp job
         uses: actions/upload-artifact@v4
         with:
           name: newsletter-dist
           path: dist/
+
+  deploy-github-pages:
+    needs: render
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
 
   upload-mailchimp:
     needs: render
