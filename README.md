@@ -2,6 +2,16 @@
 
 Mailchimp-style HTML in [`template.html`](template.html). Rules JSON (see [`input-example.json`](input-example.json) or [`input.json`](input.json)) drives a small Cheerio transform, then GitHub Actions can push the result to Mailchimp as a new template.
 
+## Usage
+
+This is a 4-part Automation.
+
+1. Make.com sends out a monthly email to me to edit and send back to a mailhook. https://eu1.make.com/292214/scenarios/5274014/edit
+2. Make.com mailhook saves the response to google sheets and then forwards onto a Github Action https://eu1.make.com/292214/scenarios/5274255/edit
+3. The Github Action takes the data, and uses it to edit and parse the template.html it then sends to mailchimp (and pages) https://github.com/IORoot/londonparkour-newsletter/actions
+4. Mailchimp Newsletter is created and can then be sent out.
+
+
 ## GitHub secret
 
 Add **`MAILCHIMP_API_KEY`** in the repository secrets. Use your full Marketing API key (Mailchimp shows a string ending with a hyphen and datacenter, for example `...-us17`). The workflow takes the segment after the last hyphen as the API host prefix (`us17` → `https://us17.api.mailchimp.com/...`).
