@@ -57,6 +57,11 @@ function isFalsey(value) {
   return false;
 }
 
+/** Turn literal newlines in rule text into HTML line breaks before `.html()` insertion. */
+function newlinesToHtmlBreaks(text) {
+  return String(text).replace(/\r\n|\r|\n/g, "<br>");
+}
+
 function parseRuleKey(key) {
   const idx = key.lastIndexOf(":");
   if (idx <= 0) return { selector: key, attr: null };
@@ -124,7 +129,7 @@ function applyRules(html, merged) {
         $(el).attr(attr, strVal);
       });
     } else {
-      els.html(String(value));
+      els.html(newlinesToHtmlBreaks(value));
     }
   }
 
